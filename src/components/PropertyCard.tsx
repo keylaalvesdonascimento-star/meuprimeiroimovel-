@@ -3,7 +3,7 @@ import { Property } from '../types';
 import { UserData } from '../types';
 import { generateWhatsAppLink } from '../services/whatsappService';
 import { formatCurrency } from '../utils/formatting';
-import { MapPin, Bed, Bath, Ruler, Video, Image as ImageIcon, Map as MapIcon, ExternalLink, ChevronLeft, ChevronRight, PlayCircle, ImageOff } from 'lucide-react';
+import { MapPin, Bed, Bath, Ruler, Video, Image as ImageIcon, Map as MapIcon, ExternalLink, ChevronLeft, ChevronRight, PlayCircle } from 'lucide-react';
 
 interface PropertyCardProps {
   property: Property;
@@ -16,7 +16,6 @@ type TabView = 'photos' | 'map' | 'video';
 export const PropertyCard: React.FC<PropertyCardProps> = ({ property, userData, monthlyInstallment }) => {
   const [activeTab, setActiveTab] = useState<TabView>('photos');
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [imgError, setImgError] = useState(false);
   const [expandedDesc, setExpandedDesc] = useState(false);
 
   const handleWhatsAppClick = () => {
@@ -27,7 +26,6 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, userData, 
   const nextImage = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (property.images.length > 0) {
-      setImgError(false); // Reset error state for new image
       setCurrentImageIndex((prev) => (prev + 1) % property.images.length);
     }
   };
@@ -35,14 +33,12 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, userData, 
   const prevImage = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (property.images.length > 0) {
-      setImgError(false); // Reset error state for new image
       setCurrentImageIndex((prev) => (prev === 0 ? property.images.length - 1 : prev - 1));
     }
   };
 
-  // Verifica se a imagem atual é válida antes de renderizar
-  const currentImageSrc = property.images[currentImageIndex];
-  const isInvalidSrc = !currentImageSrc || currentImageSrc.startsWith('sandbox:') || currentImageSrc.startsWith('file:');
+  // Verifica se o texto é longo (ajuste o 90 conforme calibração visual desejada)
+  const isLongDescription = property.description && property.description.length > 90;
 
   return (
     <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow overflow-hidden border border-slate-200 flex flex-col h-full">
@@ -50,39 +46,32 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, userData, 
       <div className="relative h-56 bg-slate-100 group">
         {activeTab === 'photos' && (
           <>
-            {!imgError && !isInvalidSrc ? (
-                <img 
-                src={currentImageSrc} 
-                alt={`${property.title}`} 
-                className="w-full h-full object-cover transition-opacity duration-300"
-                onError={() => setImgError(true)}
-                />
-            ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center bg-slate-200 text-slate-400">
-                    <ImageOff className="w-12 h-12 mb-2 opacity-50" />
-                    <span className="text-xs font-medium">Imagem indisponível</span>
-                </div>
-            )}
+            <img 
+              src={property.images[currentImageIndex]} 
+              alt={`${property.title} - Imagem ${currentImageIndex + 1}`} 
+              className="w-full h-full object-cover transition-opacity duration-300"
+            />
             
+            {/* Navigation Arrows */}
             {property.images.length > 1 && (
               <>
                 <button 
                   onClick={prevImage}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-orange-600 text-white p-1.5 rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 z-10"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-orange-600 text-white p-1.5 rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100"
                   aria-label="Imagem anterior"
                 >
                   <ChevronLeft size={20} />
                 </button>
                 <button 
                   onClick={nextImage}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-orange-600 text-white p-1.5 rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 z-10"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-orange-600 text-white p-1.5 rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100"
                   aria-label="Próxima imagem"
                 >
                   <ChevronRight size={20} />
                 </button>
                 
                 {/* Image Counter Badge */}
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/50 text-white text-[10px] font-medium px-2 py-0.5 rounded-full backdrop-blur-sm z-10">
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/50 text-white text-[10px] font-medium px-2 py-0.5 rounded-full backdrop-blur-sm">
                   {currentImageIndex + 1} / {property.images.length}
                 </div>
               </>
@@ -194,23 +183,24 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, userData, 
         {property.description && (
             <div className="mb-3 group/desc relative">
                 <p 
-                    className={`text-xs text-slate-500 transition-all duration-300 ${expandedDesc ? '' : 'line-clamp-2'}`}
-                    title={!expandedDesc ? "Passe o mouse para ver mais" : ""}
+                    className={`text-xs text-slate-500 transition-all duration-300 break-words ${expandedDesc ? '' : 'line-clamp-2'}`}
+                    title={!expandedDesc ? "Clique em 'Ler mais' para ver tudo" : ""}
                 >
                     {property.description}
                 </p>
                 
-                {/* Mostra botão se o texto for longo (+90 caracteres). 
-                    Desktop: Opacidade 0 -> 100 no hover. 
-                    Mobile: Sempre visível (opacidade 100). */}
-                {property.description.length > 90 && (
+                {isLongDescription && (
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
                             setExpandedDesc(!expandedDesc);
                         }}
-                        className={`text-xs font-bold text-orange-600 mt-1 hover:underline focus:outline-none transition-opacity duration-200
-                             ${!expandedDesc ? 'lg:opacity-0 lg:group-hover/desc:opacity-100 opacity-100' : 'opacity-100'}
+                        className={`
+                            text-xs font-bold text-orange-600 mt-1 hover:underline focus:outline-none transition-opacity duration-200
+                            /* Mobile: Sempre visível (opacity-100) */
+                            /* Desktop (lg): Invisível (opacity-0) exceto no hover do grupo ou se estiver expandido */
+                            opacity-100 lg:opacity-0 lg:group-hover/desc:opacity-100
+                            ${expandedDesc ? 'lg:opacity-100' : ''}
                         `}
                     >
                         {expandedDesc ? 'Ler menos' : 'Ler mais...'}
